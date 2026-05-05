@@ -226,7 +226,8 @@ async function logReport(status) {
             timestamp: new Date().toISOString(),
             synced: false
         };
-
+    const mapLink = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+    alert(`VGN ASSET VERIFIED\nLocation: ${pos.coords.latitude}, ${pos.coords.longitude}\nClick to view map: ${mapLink}`);
         // Save to Local Vault
         const tx = db.transaction("pending_reports", "readwrite");
         await tx.objectStore("pending_reports").add(report);
