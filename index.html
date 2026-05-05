@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VGN WASH Sentinel</title>
+    <style>
+        :root {
+            --vgn-blue: #1a237e;
+            --success: #2e7d32;
+            --warning: #fbc02d;
+            --danger: #c62828;
+        }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f4f4f4; text-align: center; }
+        .header { background: var(--vgn-blue); color: white; padding: 20px; font-weight: bold; }
+        
+        .pump-id-card { background: white; margin: 15px; padding: 15px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        
+        .grid { display: grid; grid-template-columns: 1fr; gap: 20px; padding: 20px; }
+        
+        .status-btn { 
+            border: none; border-radius: 15px; padding: 40px 20px; color: white; 
+            font-size: 1.5rem; font-weight: bold; cursor: pointer; transition: transform 0.2s;
+            display: flex; flex-direction: column; align-items: center; gap: 10px;
+        }
+        .status-btn:active { transform: scale(0.95); }
+        
+        .btn-ok { background: var(--success); }
+        .btn-warn { background: var(--warning); color: black; }
+        .btn-fail { background: var(--danger); }
+        
+        .icon { font-size: 3rem; }
+        
+        #sync-status { font-size: 0.8rem; color: #666; margin-top: 20px; }
+    </style>
+
+        <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body>
+
+    <div class="header">VGN WASH SENTINEL</div>
+
+    <!-- The Camera Viewport -->
+<div id="reader" style="width: 100%; max-width: 400px; margin: auto; display: none; border-radius: 10px; overflow: hidden;"></div>
+
+<div class="pump-id-card">
+    <div id="reader" style="width: 100%; margin-bottom: 10px;"></div>
+    <div style="font-size: 0.8rem; color: #888;">CURRENT ASSET:</div>
+    <div id="asset-name" style="font-size: 1.2rem; font-weight: bold;">[NO ACTIVE ASSET]</div>
+    <button onclick="startScanner()" id="scan-btn" style="margin-top:10px; padding: 10px; border-radius: 5px; background: #1a237e; color: white; border: none;">
+        START SCANNER
+    </button>
+
+    <button onclick="stopScanner()" id="close-scanner" style="display: none; background: #c62828; color: white; padding: 10px; border: none; border-radius: 5px; margin-top: 10px;">
+        CANCEL / CLOSE
+    </button>
+</div>
+
+<script>
+
+    if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js');
+}
+
+    // Move this to the very top of your script
+let html5QrCode = null;
+
+async function startScanner() {
+    const readerElem = document.getElementById('reader');
+    readerElem.style.display = 'block';
+
+    // 1. Kill any existing instance before starting a new one
+    if (html5QrCode && html5QrCode.isScanning) {
+        await html5QrCode.stop();
+    }
+
+    // 2. Always create a fresh instance on the 'reader' div
+    html5QrCode = new Html5Qrcode("reader");
+
+    const config = { 
+        fps: 10, 
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0 
+    };
+
+    try {
+        await html5QrCode.start(
+            { facingMode: "environment" }, 
+            config,
+            (decodedText) => {
+                // Success Logic
+                document.getElementById('asset-name').innerText = decodedText;
+                alert("VGN ASSET VERIFIED: " + decodedText);
+                stopScanner(); 
+            }
+        );
+        document.getElementById('close-scanner').style.display = 'inline-block';
+        document.getElementById('scan-btn').style.display = 'none';
+    } catch (err) {
+        console.error("Scanner start failed:", err);
+        // If it fails, clean up immediately
+        stopScanner();
+    }
+}
+
+async function stopScanner() {
+    document.getElementById('close-scanner').style.display = 'none';
+    document.getElementById('scan-btn').style.display = 'inline-block';
+    
+    if (html5QrCode) {
+        try {
+            if (html5QrCode.isScanning) {
+                await html5QrCode.stop();
+            }
+        } catch (err) {
+            console.error("Stop failed:", err);
+        } finally {
+            // Completely remove the object to free memory
+            html5QrCode = null; 
+            document.getElementById('reader').style.display = 'none';
+            document.getElementById('reader').innerHTML = ''; 
+        }
+    }
+}
+async function startScanner() {
+    const readerElem = document.getElementById('reader');
+    readerElem.style.display = 'block';
+    
+    // Logic: Force a clean slate every time we start
+    if (html5QrCode) {
+        await stopScanner();
+    }
+
+    html5QrCode = new Html5Qrcode("reader", { 
+        verbose: false // Set to true if you want to see every 'missed' scan in console
+    });
+    
+    const config = { 
+        fps: 20, // Faster frame rate for better rural use
+        qrbox: { width: 280, height: 280 },
+        aspectRatio: 1.0
+    };
+
+    try {
+        await html5QrCode.start(
+            { facingMode: "environment" }, 
+            config,
+            (decodedText) => {
+                // SUCCESS: This is the breakthrough moment
+                document.getElementById('asset-name').innerText = decodedText;
+                document.getElementById('asset-name').style.color = "#2e7d32";
+                
+                // Audio/Visual Feedback
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]); 
+                
+                alert("VGN ASSET VERIFIED\nID: " + decodedText);
+                stopScanner();
+            }
+        );
+        
+        document.getElementById('close-scanner').style.display = 'inline-block';
+        document.getElementById('scan-btn').style.display = 'none';
+        
+    } catch (err) {
+        alert("Camera Error: Ensure you are using HTTPS or Localhost.");
+        console.error(err);
+    }
+}
+</script>
+    <div class="grid">
+        <button class="status-btn btn-ok" onclick="logReport('ACTIVE')">
+            <span class="icon">💧</span> WATER FLOWING
+        </button>
+        
+        <button class="status-btn btn-warn" onclick="logReport('WARNING')">
+            <span class="icon">⚠️</span> LOW PRESSURE
+        </button>
+        
+        <button class="status-btn btn-fail" onclick="logReport('FAILED')">
+            <span class="icon">❌</span> PUMP BROKEN
+        </button>
+    </div>
+
+    <div id="sync-status">OFFLINE VAULT: <span id="pending-count">0</span> REPORTS PENDING</div>
+
+    <script>
+        // Placeholder for logic
+        function logReport(status) {
+            alert("Report Logged: " + status + "\nCapturing GPS & Timestamp...");
+            // Next: Add the Offline Storage & GPS Logic
+        }
+
+        // 1. Initialize the VGN Vault (IndexedDB)
+let db;
+const request = indexedDB.open("vgn_wash_vault", 1);
+request.onupgradeneeded = e => {
+    db = e.target.result;
+    db.createObjectStore("pending_reports", { keyPath: "id", autoIncrement: true });
+};
+request.onsuccess = e => db = e.target.result;
+
+// 2. Capture Mechanical Vibration
+let vibrationData = [];
+window.addEventListener('devicemotion', (event) => {
+    // We capture the acceleration including gravity to see the 'shake'
+    const totalForce = Math.sqrt(
+        Math.pow(event.accelerationIncludingGravity.x, 2) +
+        Math.pow(event.accelerationIncludingGravity.y, 2) +
+        Math.pow(event.accelerationIncludingGravity.z, 2)
+    );
+    // Only store high-intensity shakes to save memory
+    if (totalForce > 12) { 
+        vibrationData.push(totalForce.toFixed(2));
+    }
+});
+
+// 3. The Master Log Function
+async function logReport(status) {
+    // Proving location via Satellite (works offline)
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+        const report = {
+            status: status,
+            lat: pos.coords.latitude,
+            long: pos.coords.longitude,
+            vibration_sig: vibrationData.slice(-10), // Take the last 10 'shakes'
+            timestamp: new Date().toISOString(),
+            synced: false
+        };
+
+        // Save to Local Vault
+        const tx = db.transaction("pending_reports", "readwrite");
+        await tx.objectStore("pending_reports").add(report);
+        
+        // UI Updates
+        updatePendingCount();
+        vibrationData = []; // Reset for next scan
+        alert(`VGN SECURE LOG: ${status}\nLocation Verified: ${report.lat}, ${report.long}\nMechanical Signature Captured.`);
+    });
+}
+
+function updatePendingCount() {
+    const tx = db.transaction("pending_reports", "readonly");
+    const countRequest = tx.objectStore("pending_reports").count();
+    countRequest.onsuccess = () => {
+        document.getElementById('pending-count').innerText = countRequest.result;
+    };
+}
+
+    </script>
+</body>
+</html>
