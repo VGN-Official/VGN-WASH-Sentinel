@@ -54,6 +54,9 @@
     <button onclick="stopScanner()" id="close-scanner" style="display: none; background: #c62828; color: white; padding: 10px; border: none; border-radius: 5px; margin-top: 10px;">
         CANCEL / CLOSE
     </button>
+    <div id="map-display" style="display:none; margin-top:20px; border-radius:10px; overflow:hidden; border: 2px solid #1a237e;">
+    <!-- Map will inject here -->
+    </div>
 </div>
 
 <script>
@@ -215,27 +218,46 @@ window.addEventListener('devicemotion', (event) => {
 });
 
 // 3. The Master Log Function
+const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxE31twh2Tro8VXHWVh4RUSdkaxkS_ckuvDwTae--DFWqUN7aVCF7rHuIQWR_eOBTJ7/exec'
 async function logReport(status) {
-    // Proving location via Satellite (works offline)
+    const assetId = document.getElementById('asset-name').innerText;
+    const logBtn = event.target; // The button you just tapped
+    
+    logBtn.innerText = "SENDING...";
+    logBtn.disabled = true;
+
     navigator.geolocation.getCurrentPosition(async (pos) => {
         const report = {
+            staffId: "VGN-STAFF-MOH",
+            assetId: assetId,
             status: status,
             lat: pos.coords.latitude,
-            long: pos.coords.longitude,
-            vibration_sig: vibrationData.slice(-10), // Take the last 10 'shakes'
-            timestamp: new Date().toISOString(),
-            synced: false
+            long: pos.coords.longitude
         };
-    const mapLink = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
-    alert(`VGN ASSET VERIFIED\nLocation: ${pos.coords.latitude}, ${pos.coords.longitude}\nClick to view map: ${mapLink}`);
-        // Save to Local Vault
-        const tx = db.transaction("pending_reports", "readwrite");
-        await tx.objectStore("pending_reports").add(report);
-        
-        // UI Updates
-        updatePendingCount();
-        vibrationData = []; // Reset for next scan
-        alert(`VGN SECURE LOG: ${status}\nLocation Verified: ${report.lat}, ${report.long}\nMechanical Signature Captured.`);
+
+        try {
+            // This line sends the data to your Google URL
+            const response = await fetch(WEB_APP_URL, {
+                method: 'POST',
+                mode: 'no-cors', // <--- Add this for Localhost testing
+                body: JSON.stringify(report)
+            });
+            
+            // Success Logic
+            logBtn.innerText = "SENT ✅";
+            alert("Report Captured at Command Center!");
+            
+            // Show the Map
+            const mapIframe = `<iframe width="100%" height="200" src="https://maps.google.com/maps?q=${report.lat},${report.long}&z=15&output=embed"></iframe>`;
+            document.getElementById('map-display').innerHTML = mapIframe;
+            document.getElementById('map-display').style.display = 'block';
+
+        } catch (error) {
+            console.error("Transmission Error:", error);
+            logBtn.innerText = "RETRY";
+            logBtn.disabled = false;
+            alert("Connection Failed. Report saved to Local Vault.");
+        }
     });
 }
 
