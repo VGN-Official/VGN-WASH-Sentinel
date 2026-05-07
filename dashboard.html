@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VGN Command Center | Strategic Dashboard</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <style>
+        :root {
+            --vgn-navy: #1a237e;
+            --vgn-gold: #ffd700;
+            --vgn-red: #d32f2f;
+            --vgn-green: #2e7d32;
+        }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f4f9; }
+        .sidebar { 
+            position: absolute; top: 20px; left: 20px; width: 300px; 
+            background: white; z-index: 1000; padding: 20px; 
+            border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            border-top: 5px solid var(--vgn-navy);
+        }
+        #map { height: 100vh; width: 100%; }
+        h2 { color: var(--vgn-navy); margin-top: 0; font-size: 1.2rem; }
+        .stat-card { display: flex; justify-content: space-between; margin-bottom: 10px; padding: 10px; background: #f8f9fa; border-radius: 8px; }
+        .status-pill { padding: 4px 8px; border-radius: 12px; font-size: 0.8rem; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <h2><i class="fa-solid fa-tower-observation"></i> VGN WASH Command</h2>
+    <hr>
+    <div id="stats">
+        <div class="stat-card">
+            <span>Total Scans:</span>
+            <b id="total-scans">0</b>
+        </div>
+        <div class="stat-card">
+            <span>Active Staff:</span>
+            <b id="active-staff">0</b>
+        </div>
+    </div>
+    <p style="font-size: 0.8rem; color: #666;">Live synchronization with Field Sentinel</p>
+    <button onclick="loadReports()" style="width:100%; padding:10px; cursor:pointer; background: var(--vgn-navy); color:white; border:none; border-radius:5px;">
+        <i class="fa-solid fa-sync"></i> REFRESH LIVE FEED
+    </button>
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // Initialize Map on Nigeria (Abuja coords)
+    const map = L.map('map').setView([9.0820, 7.4913], 6);
+    L.tileLayer('https://{s}.tile.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: 'VGN Global Network'
+    }).addTo(map);
+
+    // Replace with your Google Script Web App URL
+    const API_URL = 'https://script.google.com/macros/s/AKfycbylhEv3Ty_sB2ZQDVdA8lELF7-351GTrD34pP7i1cQk-qQmCbd39pvkSmIVRF28yW7E/exec';
+
+    async function loadReports() {
+        try {
+            const response = await fetch(API_URL);
+            const data = await response.json();
+            
+            // Update Stats
+            document.getElementById('total-scans').innerText = data.length;
+            const uniqueStaff = [...new Set(data.map(item => item.staffId))].length;
+            document.getElementById('active-staff').innerText = uniqueStaff;
+
+            // Clear existing markers (optional: implementation varies)
+            data.forEach(report => {
+                const markerColor = report.status === 'Functional' ? '#2e7d32' : '#d32f2f';
+                
+                const marker = L.circleMarker([report.lat, report.long], {
+                    radius: 10,
+                    fillColor: markerColor,
+                    color: "#fff",
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+
+                marker.bindPopup(`
+                    <div style="font-family: sans-serif;">
+                        <b style="color:var(--vgn-navy)">${report.assetId}</b><br>
+                        <b>Status:</b> ${report.status}<br>
+                        <b>Field Officer:</b> ${report.staffId}<br>
+                        <small>${new Date(report.timestamp).toLocaleString()}</small>
+                    </div>
+                `);
+            });
+        } catch (error) {
+            console.error("Dashboard Sync Failed:", error);
+        }
+    }
+
+    // Auto-load on open
+    loadReports();
+    // Auto-refresh every 60 seconds
+    setInterval(loadReports, 60000);
+</script>
+
+</body>
+</html>
