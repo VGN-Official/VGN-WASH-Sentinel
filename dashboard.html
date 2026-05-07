@@ -62,9 +62,9 @@
 
     async function loadReports() {
         try {
-            const response = await fetch(API_URL);
+            const response = await fetch(API_URL, { redirect: 'follow' });
             const data = await response.json();
-            
+            console.log("Handshake Data:", data);
             // Update Stats
             document.getElementById('total-scans').innerText = data.length;
             const uniqueStaff = [...new Set(data.map(item => item.staffId))].length;
@@ -72,6 +72,14 @@
 
             // Clear existing markers (optional: implementation varies)
             data.forEach(report => {
+
+                // Normalize keys to lowercase to avoid "undefined" errors
+                const lat = report.lat || report.latitude || report.LAT;
+                const lon = report.long || report.longitude || report.LONG;
+                const status = report.status || report.STATUS || 'Unknown';
+    
+                if (!lat || !lon) return; // Skip if coordinates are missing
+
                 const markerColor = report.status === 'Functional' ? '#2e7d32' : '#d32f2f';
                 
                 const marker = L.circleMarker([report.lat, report.long], {
