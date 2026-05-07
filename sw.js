@@ -2,6 +2,8 @@ const CACHE_NAME = 'vgn-wash-v1';
 const ASSETS = [
   '/',
   '/index.html',
+  '/dashboard.html',
+  '/status.json',
   'https://unpkg.com/html5-qrcode'
 ];
 
