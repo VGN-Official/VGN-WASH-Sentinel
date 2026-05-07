@@ -71,35 +71,30 @@
             document.getElementById('active-staff').innerText = uniqueStaff;
 
             // Clear existing markers (optional: implementation varies)
-            data.forEach(report => {
+           data.forEach(report => {
+            // Auto-adjust map to see all pins
+            const group = new L.featureGroup(allMarkersArray); // You'd need to push markers to an array
+            map.fitBounds(group.getBounds());
+    // This logic looks for any variation of the coordinate names
+    const lat = report.lat || report.latitude || report.gps_lat;
+    const lon = report.long || report.longitude || report.gps_long || report.lng;
 
-                // Normalize keys to lowercase to avoid "undefined" errors
-                const lat = report.lat || report.latitude || report.LAT;
-                const lon = report.long || report.longitude || report.LONG;
-                const status = report.status || report.STATUS || 'Unknown';
-    
-                if (!lat || !lon) return; // Skip if coordinates are missing
+    if (lat && lon) {
+        const markerColor = report.status === 'Functional' ? '#2e7d32' : '#d32f2f';
+        
+        const marker = L.circleMarker([lat, lon], {
+            radius: 10,
+            fillColor: markerColor,
+            color: "#fff",
+            weight: 2,
+            fillOpacity: 0.8
+        }).addTo(map);
 
-                const markerColor = report.status === 'Functional' ? '#2e7d32' : '#d32f2f';
-                
-                const marker = L.circleMarker([report.lat, report.long], {
-                    radius: 10,
-                    fillColor: markerColor,
-                    color: "#fff",
-                    weight: 2,
-                    opacity: 1,
-                    fillOpacity: 0.8
-                }).addTo(map);
-
-                marker.bindPopup(`
-                    <div style="font-family: sans-serif;">
-                        <b style="color:var(--vgn-navy)">${report.assetId}</b><br>
-                        <b>Status:</b> ${report.status}<br>
-                        <b>Field Officer:</b> ${report.staffId}<br>
-                        <small>${new Date(report.timestamp).toLocaleString()}</small>
-                    </div>
-                `);
-            });
+        marker.bindPopup(`<b>Asset:</b> ${report.assetid || 'Unknown'}<br><b>Status:</b> ${report.status}`);
+    } else {
+        console.warn("Skipping row: Missing coordinates", report);
+    }
+});
         } catch (error) {
             console.error("Dashboard Sync Failed:", error);
         }
