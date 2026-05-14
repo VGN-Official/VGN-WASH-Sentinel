@@ -15,10 +15,9 @@ self.addEventListener('install', (event) => {
 });
 
 // Fetch: Serve from cache if offline
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    })
-  );
+self.addEventListener('fetch', event => {
+    // If the request is for a map tile, just let the network handle it normally
+    if (event.request.url.includes('cartocdn.com') || event.request.url.includes('openstreetmap.org')) {
+        return; 
+    }
 });
