@@ -61,44 +61,46 @@
     const API_URL = 'https://script.google.com/macros/s/AKfycbyGC4oJN2zjXR5iJlweeLhzB71H3klCNKxtt-ebhBl__9-Z11bfgqapX037bXnVoagl/exec';
 
     async function loadReports() {
-        try {
-            const response = await fetch(API_URL, { redirect: 'follow' });
-            const data = await response.json();
-            console.log("Handshake Data:", data);
-            // Update Stats
-            document.getElementById('total-scans').innerText = data.length;
-            const uniqueStaff = [...new Set(data.map(item => item.staffId))].length;
-            document.getElementById('active-staff').innerText = uniqueStaff;
-
-            // Clear existing markers (optional: implementation varies)
-           data.forEach(report => {
-            // Auto-adjust map to see all pins
-            const group = new L.featureGroup(allMarkersArray); // You'd need to push markers to an array
-            map.fitBounds(group.getBounds());
-    // This logic looks for any variation of the coordinate names
-    const lat = report.lat || report.latitude || report.gps_lat;
-    const lon = report.long || report.longitude || report.gps_long || report.lng;
-
-    if (lat && lon) {
-        const markerColor = report.status === 'Functional' ? '#2e7d32' : '#d32f2f';
+    try {
+        const response = await fetch(API_URL, { redirect: 'follow' });
+        const data = await response.json();
         
-        const marker = L.circleMarker([lat, lon], {
-            radius: 10,
-            fillColor: markerColor,
-            color: "#fff",
-            weight: 2,
-            fillOpacity: 0.8
-        }).addTo(map);
+        // 1. Clear existing markers if any
+        // 2. Create an array to hold markers for auto-zoom
+        const markers = [];
 
-        marker.bindPopup(`<b>Asset:</b> ${report.assetid || 'Unknown'}<br><b>Status:</b> ${report.status}`);
-    } else {
-        console.warn("Skipping row: Missing coordinates", report);
-    }
-});
-        } catch (error) {
-            console.error("Dashboard Sync Failed:", error);
+        data.forEach(report => {
+            const lat = report.lat || report.latitude;
+            const lon = report.long || report.longitude;
+
+            if (lat && lon) {
+                const markerColor = report.status === 'Functional' ? '#2e7d32' : '#d32f2f';
+                
+                const marker = L.circleMarker([lat, lon], {
+                    radius: 10,
+                    fillColor: markerColor,
+                    color: "#fff",
+                    weight: 2,
+                    fillOpacity: 0.8
+                }).addTo(map);
+
+                marker.bindPopup(`<b>${report.assetid || 'Asset'}</b><br>Status: ${report.status}`);
+                
+                // Add to our tracking array
+                markers.push(marker);
+            }
+        });
+
+        // 3. Auto-zoom to fit all markers (The Fix)
+        if (markers.length > 0) {
+            const group = new L.featureGroup(markers);
+            map.fitBounds(group.getBounds().pad(0.1));
         }
+
+    } catch (error) {
+        console.error("Dashboard Sync Failed:", error);
     }
+}
 
     // Auto-load on open
     loadReports();
